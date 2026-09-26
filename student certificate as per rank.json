@@ -1,0 +1,176 @@
+{
+  "name": "student certificate as per rank",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 11
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -608,
+        -16
+      ],
+      "id": "fda8fd93-67c8-45d3-8588-aaf672304a2b",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1XgIQSJvcJPYPSws-5jmen4mJtsdtdCJOi7WozPKd7c0",
+          "mode": "list",
+          "cachedResultName": "Student Certificates",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XgIQSJvcJPYPSws-5jmen4mJtsdtdCJOi7WozPKd7c0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XgIQSJvcJPYPSws-5jmen4mJtsdtdCJOi7WozPKd7c0/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -384,
+        -16
+      ],
+      "id": "a9786b84-d905-4f1a-b021-5e887a3a1abd",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XjZ6ZpRPyAAX9Kj0",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "html",
+        "options": {
+          "fileName": "=Rank{{ $json.rank }}_certificate.html"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        -16
+      ],
+      "id": "3a35444c-174c-4889-b4b8-bd39c82a8543",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Top 3 students -> one certificate (HTML) per student, styled like the reference design\n\nconst rankLabels = ['1st', '2nd', '3rd'];\nconst rankTitles = ['First', 'Second', 'Third'];\n\nconst schoolName = 'Apollo International School';\nconst principalName = 'Mrs. Shah';\n\nconst esc = (v) =>\n  String(v ?? '')\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;');\n\nconst today = new Date().toLocaleDateString('en-GB', {\n  day: 'numeric',\n  month: 'long',\n  year: 'numeric',\n});\n\n// In your sheet the \"rank\" column holds the marks (percentage)\nconst top3 = $input.all()\n  .map((item) => item.json)\n  .filter((s) => s['name'] && s['rank'] !== undefined && s['rank'] !== '')\n  .sort((a, b) => Number(b['rank']) - Number(a['rank']))\n  .slice(0, 3);\n\nreturn top3.map((student, i) => {\n  const name = esc(student['name']);\n  const className = esc(student['class']);\n  const percentage = esc(student['rank']);\n  const email = student['gmail'] || '';\n  const rank = i + 1;\n\n  const html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<title>Certificate - ${name}</title>\n<style>\n  @page { size: A4 landscape; margin: 0; }\n  body {\n    margin: 0;\n    padding: 20px;\n    background: #eef0f4;\n    font-family: 'Georgia', 'Times New Roman', serif;\n  }\n  .certificate {\n    position: relative;\n    width: 1000px;\n    height: 700px;\n    margin: auto;\n    background: #fdfcf8;\n    overflow: hidden;\n    box-shadow: 0 0 25px rgba(0,0,0,0.15);\n  }\n  /* Ribbons */\n  .ribbon {\n    position: absolute;\n    width: 500px;\n    height: 500px;\n    z-index: 1;\n  }\n  .ribbon.top-left { top: -250px; left: -250px; transform: rotate(45deg); }\n  .ribbon.bottom-right { bottom: -250px; right: -250px; transform: rotate(45deg); }\n  .ribbon .band {\n    position: absolute;\n    width: 100%;\n    height: 90px;\n    top: 205px;\n  }\n  .ribbon .navy { background: #14213d; height: 130px; top: 185px; }\n  .ribbon .gold1 { background: linear-gradient(180deg,#e6c15c,#b8860b); height: 14px; top: 178px; }\n  .ribbon .gold2 { background: linear-gradient(180deg,#b8860b,#e6c15c); height: 10px; top: 317px; }\n\n  .border {\n    position: absolute;\n    inset: 22px;\n    border: 2px solid #b8860b;\n    z-index: 2;\n    pointer-events: none;\n  }\n  .corner {\n    position: absolute;\n    width: 90px;\n    height: 90px;\n    border: 3px solid #b8860b;\n    z-index: 3;\n  }\n  .corner.tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }\n  .corner.tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }\n  .corner.bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }\n  .corner.br { bottom: 8px; right: 8px; border-left: none; border-top: none; }\n\n  .content {\n    position: relative;\n    z-index: 4;\n    text-align: center;\n    padding: 55px 90px 0;\n  }\n  .logo {\n    width: 62px; height: 62px;\n    margin: 0 auto 8px;\n    border-radius: 50%;\n    background: linear-gradient(145deg,#1a2a52,#0e1730);\n    display: flex; align-items: center; justify-content: center;\n    border: 3px solid #b8860b;\n  }\n  .logo svg { width: 34px; height: 34px; }\n  .school-name {\n    font-size: 15px;\n    letter-spacing: 3px;\n    color: #14213d;\n    font-weight: bold;\n    text-transform: uppercase;\n    margin: 4px 0 2px;\n  }\n  .school-sub {\n    font-size: 11px;\n    letter-spacing: 2px;\n    color: #b8860b;\n    margin-bottom: 18px;\n  }\n  .title {\n    font-size: 46px;\n    letter-spacing: 4px;\n    color: #14213d;\n    text-transform: uppercase;\n    margin: 0;\n    font-weight: bold;\n  }\n  .subtitle {\n    font-size: 17px;\n    letter-spacing: 5px;\n    color: #b8860b;\n    text-transform: uppercase;\n    margin: 4px 0 22px;\n  }\n  .presented {\n    font-size: 13px;\n    letter-spacing: 2px;\n    color: #555;\n    text-transform: uppercase;\n    margin-bottom: 8px;\n  }\n  .name {\n    font-family: 'Brush Script MT', 'Segoe Script', cursive;\n    font-size: 48px;\n    color: #14213d;\n    border-bottom: 1px solid #b8860b;\n    display: inline-block;\n    padding: 0 40px 6px;\n    margin-bottom: 18px;\n  }\n  .line1 {\n    font-size: 12px;\n    letter-spacing: 1.5px;\n    color: #555;\n    text-transform: uppercase;\n    margin: 4px 0;\n  }\n  .course {\n    font-size: 22px;\n    letter-spacing: 2px;\n    color: #14213d;\n    font-weight: bold;\n    text-transform: uppercase;\n    margin: 2px 0 14px;\n  }\n  .achieve {\n    font-size: 12px;\n    letter-spacing: 1.5px;\n    color: #555;\n    text-transform: uppercase;\n    margin: 4px 0;\n  }\n  .rank {\n    font-size: 22px;\n    letter-spacing: 2px;\n    color: #14213d;\n    font-weight: bold;\n    text-transform: uppercase;\n    margin: 2px 0 2px;\n  }\n  .marks {\n    font-size: 14px;\n    color: #555;\n    margin-bottom: 10px;\n  }\n\n  .footer {\n    position: relative;\n    z-index: 4;\n    display: flex;\n    justify-content: space-between;\n    align-items: flex-end;\n    padding: 0 90px;\n    margin-top: 10px;\n  }\n  .footer .block { width: 200px; text-align: center; }\n  .footer .date-text {\n    font-size: 12px;\n    letter-spacing: 1px;\n    color: #555;\n    text-transform: uppercase;\n    padding-top: 6px;\n  }\n  .footer .line {\n    border-top: 1px solid #999;\n    padding-top: 6px;\n    font-size: 12px;\n    letter-spacing: 1px;\n    color: #555;\n    text-transform: uppercase;\n  }\n  .seal {\n    width: 90px; height: 90px;\n    border-radius: 50%;\n    background: radial-gradient(circle at 35% 30%, #f3d27a, #b8860b 70%, #8a6508);\n    display: flex; align-items: center; justify-content: center;\n    text-align: center;\n    color: #14213d;\n    font-size: 9px;\n    font-weight: bold;\n    letter-spacing: 1px;\n    border: 3px solid #fdfcf8;\n    box-shadow: 0 0 0 2px #b8860b;\n    text-transform: uppercase;\n  }\n  .signature {\n    font-family: 'Brush Script MT', 'Segoe Script', cursive;\n    font-size: 32px;\n    font-weight: bold;\n    color: #1f3a93;\n    margin-bottom: 4px;\n  }\n</style>\n</head>\n<body>\n  <div class=\"certificate\">\n    <div class=\"ribbon top-left\">\n      <div class=\"band gold1\"></div>\n      <div class=\"band navy\"></div>\n      <div class=\"band gold2\"></div>\n    </div>\n    <div class=\"ribbon bottom-right\">\n      <div class=\"band gold1\"></div>\n      <div class=\"band navy\"></div>\n      <div class=\"band gold2\"></div>\n    </div>\n\n    <div class=\"border\"></div>\n    <div class=\"corner tl\"></div>\n    <div class=\"corner tr\"></div>\n    <div class=\"corner bl\"></div>\n    <div class=\"corner br\"></div>\n\n    <div class=\"content\">\n      <div class=\"logo\">\n        <svg viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n          <path d=\"M12 3L2 8l10 5 10-5-10-5z\" fill=\"#e6c15c\"/>\n          <path d=\"M6 10.5V16c0 1.5 2.5 3 6 3s6-1.5 6-3v-5.5\" stroke=\"#e6c15c\" stroke-width=\"1.4\" fill=\"none\"/>\n        </svg>\n      </div>\n      <div class=\"school-name\">${schoolName}</div>\n      <div class=\"school-sub\">&bull; EXCELLENCE IN EDUCATION &bull;</div>\n\n      <h1 class=\"title\">Certificate</h1>\n      <div class=\"subtitle\">OF ACHIEVEMENT</div>\n\n      <div class=\"presented\">This certificate is proudly presented to</div>\n      <div class=\"name\">${name}</div>\n\n      <div class=\"line1\">For securing outstanding academic results in</div>\n      <div class=\"course\">Class ${className}</div>\n\n      <div class=\"achieve\">In recognition of</div>\n      <div class=\"rank\">${rankLabels[i]} Rank &mdash; ${rankTitles[i]} Position</div>\n      <div class=\"marks\">with <b>${percentage}%</b> marks</div>\n    </div>\n\n    <div class=\"footer\">\n      <div class=\"block\">\n        <div class=\"date-text\">Date: ${today}</div>\n      </div>\n      <div class=\"seal\">Official<br>Seal</div>\n      <div class=\"block\">\n        <div class=\"signature\">${principalName}</div>\n        <div class=\"line\">Principal's Signature</div>\n      </div>\n    </div>\n  </div>\n</body>\n</html>`;\n\n  return {\n    json: {\n      name: student['name'],\n      className: student['class'],\n      marks: student['rank'],\n      email,\n      rank,\n      html,\n    },\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -16
+      ],
+      "id": "096d73dc-58e7-49eb-8f3c-b58d1d026877",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Code in JavaScript').item.json.email }}",
+        "subject": "={{ $('Code in JavaScript').item.json.email }}",
+        "message": "=Dear {{ $('Code in JavaScript').item.json.name }},<br><br> Congratulations! You have secured {{ $('Code in JavaScript').item.json.rank }} rank in Class {{ $('Code in JavaScript').item.json.className }} with {{ $('Code in JavaScript').item.json.marks }}%.<br><br> Please find your certificate attached.<br><br> Best wishes,<br> Mrs. Shah<br> Principal",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        288,
+        -16
+      ],
+      "id": "cf331419-ceb5-4bc7-badf-4421144446d1",
+      "name": "Send a message",
+      "webhookId": "6e42e7f3-2555-4e8b-8510-cb5024a1e834",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "P7vqP0ONkoWY00Na",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "54db5d6d-97c5-4a33-912b-98f3a4da3b3f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "055a3236af37dc90f8551a3425cd00f02d7692a411355b29831844a73c130d6a"
+  },
+  "nodeGroups": [],
+  "id": "DZorkAcxLm7mjPrs",
+  "tags": []
+}
